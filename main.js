@@ -10,32 +10,28 @@ const connection =  mysql.createConnection({
     port : "3306",
     database : "conqtvms_dev"
 })
-
 const getDatails = (req, res) => {
 
     const pageSize = req.query.pageSize ? req.query.pageSize : 10
     const currentPage = req.query.currentPage ? req.query.currentPage : 1
     const searchBy = req.query.searchBy ? req.query.searchBy : ''
+    const searchFields = req.query.searchFields && Array.isArray(req.query.searchFields) ? req.query.searchFields : []
 
     const Limit = pageSize
     const offset = (currentPage - 1) * pageSize
     const query = `select * from ProductV2  Limit ${offset}, ${Limit}`
+
     connection.query(query, (err, data) => {
         if (err) {
             res.status(500).json({ status: "failed" })
         } else {
-            let filteredData =[]
-            if (searchBy) {
-                data.forEach(i => {
-                    if ((i.productName.includes(searchBy) || i.productImagesName.includes(searchBy) || i.productImagesUrls.includes(searchBy) || i.brandName.includes(searchBy) ||
-                        i.description.includes(searchBy) || i.itemCode.includes(searchBy) || i.itemType.includes(searchBy))) {
-                        filteredData.push(i)
-                    }
-
-                })
-            }
-
-            res.status(200).json(filteredData.length ? filteredData : data)
+            const result = data.filter(product => {
+                const fieldsToSearch = searchFields.length ? searchFields : Object.keys(product);
+                return fieldsToSearch.some(field => {
+                    return String(product[field]).toLowerCase().includes(searchBy.toLowerCase());
+                });
+            });
+            res.status(200).json(result.length ? result : data)
         }
     })
 }
